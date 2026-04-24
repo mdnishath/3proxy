@@ -163,12 +163,50 @@ try {
   Log "ROTATION FAILED: $($_.Exception.Message)" Red
   exit 1
 } finally {
+  # Re-enable all adapters we disabled
   foreach ($nm in $disabledNames) {
     Log "Re-enabling '$nm'" Cyan
     try {
       Enable-NetAdapter -Name $nm -Confirm:$false
     } catch {
       Log "Re-enable of '$nm' failed: $($_.Exception.Message)" Red
+    }
+  }
+
+  if ($disabledNames.Count -gt 0) {
+    # Give the radio + supplicant time to come back. Driver init alone is ~3-4s.
+    Start-Sleep -Seconds 6
+
+    # For each previously-disabled adapter, if it isn't connected, force-attach
+    # it to the saved Wi-Fi profile. After Disable/Enable, Windows often loses
+    # the SSID association and just sits in Disconnected limbo.
+    foreach ($nm in $disabledNames) {
+      $a = Get-NetAdapter -Name $nm -ErrorAction SilentlyContinue
+      if (-not $a) { continue }
+      if ($a.Status -eq 'Up') {
+        Log "'$nm' came back Up on its own" DarkGreen
+        continue
+      }
+      # Find any saved profile attached to this interface
+      $raw = netsh wlan show profiles interface="$nm" 2>$null
+      $profile = $null
+      foreach ($ln in $raw) {
+        if ($ln -match 'User Profile\s+:\s+(.+)$') { $profile = $matches[1].Trim(); break }
+      }
+      if (-not $profile) {
+        Log "'$nm' has no saved Wi-Fi profile - cannot auto-reconnect" Red
+        continue
+      }
+      Log "Force-connecting '$nm' to '$profile' ..." Yellow
+      cmd.exe /c "netsh wlan connect name=`"$profile`" interface=`"$nm`"" | Out-Null
+    }
+
+    # Final wait + status report. We don't fail the rotation if reconnect
+    # is slow - the IP rotation itself succeeded; the OS just needs more time.
+    Start-Sleep -Seconds 8
+    foreach ($nm in $disabledNames) {
+      $a = Get-NetAdapter -Name $nm -ErrorAction SilentlyContinue
+      if ($a) { Log "'$nm' final status: $($a.Status)" Cyan }
     }
   }
 }
