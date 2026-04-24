@@ -1,0 +1,15 @@
+{
+  "_comment_": "Rotation credentials keyed by slot number (same slot as adapters.json / passwd / 3proxy.cfg). Adapter names are looked up dynamically from adapters.json at rotation time, so if the user moves USB dongles around the rotation still targets the correct router. Capture username_hash and password_hash from the router admin's /goform/login XHR payload (Chrome DevTools; see rotate-router.ps1 header).",
+
+  "1": {
+    "router_ip":     "192.168.60.1",
+    "username_hash": "4cc68e3626e5b94602c325f7c4ca5dee",
+    "password_hash": "3c8385ad382b48bce6ec06985795ae76"
+  },
+
+  "2": {
+    "router_ip":     "192.168.60.1",
+    "username_hash": "REPLACE_ME_FROM_ROUTER_2_DEVTOOLS_CAPTURE",
+    "password_hash": "REPLACE_ME_FROM_ROUTER_2_DEVTOOLS_CAPTURE"
+  }
+}
